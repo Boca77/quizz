@@ -6,18 +6,20 @@ $("#question-count").html(count);
 
 $("#start-btn").click(() => {
   $("#intro").hide();
-  $("#quiz").show("slow");
+  $("#quiz").show(() => {
+    $("#quiz").addClass("animate__animated", "animate__fadeInLeft");
+  });
 });
 
 const fetchQuestions = () => {
   fetch("https://opentdb.com/api.php?amount=20&type=multiple")
-    .then((response) => {
+    .then((response) => response.json())
+    .then((data) => {
       $("#loading").hide();
       $("#intro").show("slow");
 
-      return response.json();
-    })
-    .then((data) => {
+      localStorage.setItem("correctQuestions", correctCount);
+
       let id = 1;
       let hashID = 1;
 
@@ -38,10 +40,12 @@ const fetchQuestions = () => {
           const answerDiv = document.getElementById(`answers-${id}`);
 
           btn.classList.add("answer", "btn", "btn-outline-secondary");
-          btn.innerHTML += answer;
+          btn.innerHTML = answer;
           answerDiv.appendChild(btn);
 
           btn.addEventListener("click", (e) => {
+            document.getElementById("start-over-msg").innerText = "";
+
             hashID++;
 
             e.target.parentElement.parentElement.parentElement.classList.add(
@@ -53,53 +57,76 @@ const fetchQuestions = () => {
             if (hashID > 20) {
               window.location.hash = `#end`;
 
-              $("#quiz").hide("slow");
-              $("#end").addClass(
-                "d-flex",
-                "animate__animated",
-                "animate__fadeInLeft"
+              $("#quiz").hide();
+              $("#end").show(() => {
+                $("#end").addClass(
+                  "d-flex",
+                  "animate__animated",
+                  "animate__fadeInLeft"
+                );
+              });
+              $("#correct-count").html(
+                localStorage.getItem("correctQuestions")
               );
-              $("#correct-count").html(correctCount);
             }
 
-            if (count < 20) {
-              window.location.hash = `#question-${hashID}`;
-              $("#question-count").html(count);
-            }
+            correct = window.location.hash = `#question-${hashID}`;
+            $("#question-count").html(count);
 
-            if (e.target.innerHTML == decodedCorrect) {
-              console.log("Correct");
+            if (e.target.innerHTML === decodedCorrect) {
               correctCount++;
-            }
-            if (e.target.innerHTML != decodedCorrect) {
-              console.log("Wrong");
+              localStorage.setItem("correctQuestions", correctCount);
             }
           });
         });
-        window.addEventListener("hashchange", hashHandler);
         id++;
       });
+      window.addEventListener("hashchange", hashHandler);
+    })
+    .catch((error) => {
+      console.log(error);
     });
 };
 
-fetchQuestions();
+setTimeout(() => {
+  fetchQuestions();
+}, 500);
 
 $("#start-over-btn").click(() => {
+  if (location.hash == "#question-1") {
+    document.getElementById("start-over-msg").innerText =
+      "Why start over on the first question? Try your luck!";
+    return;
+  }
+
   window.location.reload();
+  localStorage.removeItem("correctQuestions");
 });
 
 $("#try-again-btn").click(() => {
   window.location.reload();
+  localStorage.removeItem("correctQuestions");
 });
 
-function hashHandler(event) {
-  event.preventDefault();
+function hashHandler() {
   let id = location.hash;
 
-  document.querySelector(`${id}`).classList.remove("d-none");
-  document
-    .querySelector(`${id}`)
-    .classList.add("d-flex", "animate__animated", "animate__fadeInLeft");
+  document.querySelectorAll(".card").forEach((card) => {
+    card.classList.add("d-none");
+    card.classList.remove("d-flex", "animate__animated", "animate__fadeInLeft");
+  });
+
+  if (id) {
+    const element = document.querySelector(id);
+    if (element) {
+      element.classList.remove("d-none");
+      element.classList.add(
+        "d-flex",
+        "animate__animated",
+        "animate__fadeInLeft"
+      );
+    }
+  }
 }
 
 function elementCreate(id) {
@@ -126,5 +153,3 @@ function elementCreate(id) {
   categoryDiv.classList.add("card-footer", "text-muted");
   categoryDiv.setAttribute("id", `category-${id}`);
 }
-
-//  allAnswers = allAnswers.sort(() => Math.random() - 0.5);
